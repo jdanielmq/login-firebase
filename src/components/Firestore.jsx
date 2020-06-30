@@ -85,6 +85,7 @@ const Firestore = (props) => {
         }
     }
 
+    
   
     const agregar = async (e) => {
       e.preventDefault()
