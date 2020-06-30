@@ -10,18 +10,36 @@ const Firestore = (props) => {
     const [tarea, setTarea] = React.useState('')
     const [modoEdicion, setModoEdicion] = React.useState(false)
     const [id, setId] = React.useState('')
+    const [ultimo, setUltimo] = React.useState(null)
+    const [desactivar, setDesactivar] = React.useState(false)
   
   
     React.useEffect(() => {
   
       const obtenerDatos = async () => {
-  
+        
         try {
-  
-          const data = await db.collection(props.user.uid).get()
-          const arrayData = data.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-          console.log(arrayData)
-          setTareas(arrayData)
+            setDesactivar(true)
+            const data = await db.collection(props.user.uid)
+            .limit(2)
+            .orderBy('fecha', 'desc')
+            .get()
+
+            setUltimo(data.docs[data.docs.length - 1])
+    
+            const arrayData = data.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+            setTareas(arrayData)
+
+            const query = await db.collection(props.user.uid)
+                .limit(2)
+                .orderBy('fecha')
+                .startAfter(data.docs[data.docs.length - 1])  
+                .get()
+            if(query.empty){
+                setDesactivar(true)
+            }else{
+                setDesactivar(false)
+            }
           
         } catch (error) {
           console.log(error)
@@ -32,6 +50,41 @@ const Firestore = (props) => {
       obtenerDatos()
   
     }, [props])
+
+    const siguiente = async () => {
+        setDesactivar(true)
+        try {
+            const data = await db.collection(props.user.uid)
+                .limit(2)
+                .orderBy('fecha')
+                .startAfter(ultimo)  
+                .get()
+            
+            setUltimo(data.docs[data.docs.length - 1])
+    
+            const arrayData = data.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+            if(arrayData.length !== 0){
+                setTareas([...tareas, ...arrayData])
+            }
+    
+            const query = await db.collection(props.user.uid)
+                .limit(2)
+                .orderBy('fecha')
+                .startAfter(data.docs[data.docs.length - 1])  
+                .get()
+    
+            if(query.empty){
+                console.log('no hay más...')
+                setDesactivar(true)
+            }else{
+                setDesactivar(false)
+            }
+    
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
   
     const agregar = async (e) => {
       e.preventDefault()
@@ -130,7 +183,14 @@ const Firestore = (props) => {
                             </li>
                         ))
                         }
-                    </ul>
+                    </ul>  
+                    <button 
+                        className="btn btn-block btn-sm mt-2 btn-info"
+                        disabled={desactivar}
+                        onClick={() => siguiente()}
+                    >
+                        Más tareas...
+                    </button>
                 </div>
                 <div className="col-md-6">
                     <h3>
